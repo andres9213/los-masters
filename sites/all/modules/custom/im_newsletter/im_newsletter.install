@@ -1,0 +1,40 @@
+<?php
+ /**
+  * @file
+  */
+
+ /**
+  * Implements hook_schema().
+  */
+
+ function im_newsletter_schema(){
+ 	$schema = array();
+
+ 	$schema['im_newsletter'] = array(
+ 		'description' => 'Imocon newsletter',
+ 		'fields' => array(
+ 			'id_number' => array(
+ 				'description' => 'The primary identifier',
+ 				'type' => 'serial',
+ 				'unsigned' => TRUE,
+ 				'not null' => TRUE,
+ 				),
+ 			'name' => array(
+ 				'description' => 'Field for the full name',
+ 				'type' => 'varchar',
+ 				'length' => 200,
+ 				'not null' => TRUE,
+ 				'default' => '',
+ 				),
+ 			'email' => array(
+ 				'description' => 'Field for the e-mail',
+ 				'type' => 'varchar',
+ 				'length' => 200,
+ 				'not null' => TRUE,
+ 				'default' => '',
+ 				),
+ 			),
+ 		'primary key' => array('id_number'),
+ 		);
+ 	return $schema;
+ }

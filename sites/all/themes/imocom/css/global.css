@@ -1,0 +1,44 @@
+/* This file will hold styles for the mobile version of your website (mobile first). */
+/* This also can include ANY global CSS that applies site-wide. Unless overwritten by a more specific style rule, CSS declarations in global.css will apply site-wide. */
+
+/*----Banner home----*/
+#zone-header{
+  margin: 0;
+  width: 100%;
+}
+#zone-header img{
+  height: auto;
+ 	width: 100%;
+ }
+ #zone-header .region-header-second{
+   margin: 0;
+   width: 100%;
+ }
+ .view-front-banner{
+   background: url(../images/textura_paginador.png);
+   padding-bottom: 70px;
+ }
+ .view-front-banner .flex-control-nav {
+   background: url(../images/line_paginador.png) no-repeat center center;
+   bottom: -47px;
+	height: 20px;
+}
+ .view-front-banner .flex-control-nav li{
+ 	margin: 0;
+ }
+ .view-front-banner .flex-control-nav li a{
+   background: url(../images/bot_slider.png) no-repeat;
+   box-shadow: none;
+   display: inline-block;
+   float: left;
+   height: 22px;
+   margin: 0 3px;
+   text-indent: -9999px;
+   width: 21px;
+ }
+ .view-front-banner .flex-control-nav li a.flex-active,
+ .view-front-banner .flex-control-nav li a:hover{
+   background-position: 0px -22px;
+   cursor: pointer;
+ }
+ 

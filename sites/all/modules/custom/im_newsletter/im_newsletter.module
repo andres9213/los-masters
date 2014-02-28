@@ -1,0 +1,105 @@
+<?php
+ /*
+  * @file
+  */
+
+ /*
+  * Implements hook_block_info().
+  */
+
+function im_newsletter_block_info(){
+	$blocks['im_newsletters'] = array(
+		'info' => t('Block: Newsletter'),
+		);
+	return $blocks;
+}
+
+/*
+ * Implements hook_block_view().
+ */
+
+function im_newsletter_block_view($delta = ''){
+  $block = array();
+  switch ($delta){
+  	case 'im_newsletters':
+  	$block['subject'] = t('NEWSLETTER');
+  	$block['content'] = drupal_get_form('imocom_newsletter');
+  	break;
+  }
+  return $block;
+}
+
+ /*
+  * Newsletter form().
+  */
+ function imocom_newsletter($form, $form_state){
+ 	$form = array();
+  $form['intro'] = array(
+    '#markup' => t('NEWSLETTER'),
+    '#prefix' => '<span class="im-newsletter">',
+    '#suffix' => '</span>',
+  );
+  $form['text'] = array(
+    '#markup' => t('Use this form to send a message to an e-mail address.'),
+    '#prefix' => '<span class="im-newsletter-text">',
+    '#suffix' => '</span>',
+  );
+ 	$form['name1'] = array(
+ 		'#title' => t('Name'),
+ 		'#type' => 'textfield',
+ 		'#size' => 30,
+ 		'#maxlength' => 35,
+ 		'#required' => TRUE,
+ 		);
+ 	$form['email_account'] = array(
+ 		'#title' => t('E-mail account'),
+ 		'#type' => 'textfield',
+ 		'#size' => 30,
+ 		'#maxlength' => 35,
+ 		'#required' => TRUE,
+ 		);
+ 	$form['submit'] = array(
+ 		'#type' => 'submit',
+ 		'#value' => t('send'),
+ 		);
+ 	return $form;
+
+ }
+ /*
+  * Newsletter submit.
+  */
+ function imocom_newsletter_submit($form, $form_state){
+/*  $mail = $form_state['values']['submitted_tree']['email_address'];
+if (!valid_email_address($mail)) {
+  form_set_error('submitted][email_address', t('The email address appears to be invalid.'));
+}
+else {*/
+ 	$id = db_insert('im_newsletter')
+ 	  ->fields(array(
+      'name' => $form_state['values']['name1'],
+      'email' => $form_state['values']['email_account'],
+ 		))
+ 		->execute();
+ 		drupal_set_message(t('Changes Saved'));
+}
+ 	
+ /*
+  * Newsletter form validate.
+  */
+
+function imocom_newsletter_validate(&$form, &$form_state) {
+  if (!valid_email_address($form_state['values']['email_account'])) {
+    form_set_error('email-input', t('Field email expects an email address'));
+    $form['email_account']['attributes'] = array('class' => array('error'));
+  }
+}
+
+/**
+ * Implement hook_views_api().
+ */
+ function im_newsletter_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'im_newsletter') . '/views', 
+  );
+}

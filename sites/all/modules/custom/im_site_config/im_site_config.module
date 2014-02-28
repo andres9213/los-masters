@@ -1,0 +1,395 @@
+<?php
+/**
+ * @file
+ * Site config
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function im_site_config_menu(){
+	$items['admin/config/imocom'] = array(
+		'title' => t('Imocom configuration'),
+		'description' => 'Settings for the Imocom site.',
+		'page callback' => 'system_admin_menu_block_page',
+		'access arguments' => array('administer site configuration'),
+		'file' => 'system.admin.inc',
+		'file path' => drupal_get_path('module', 'system'),
+		);
+	$items['admin/config/imocom/gallery'] = array(
+		'title' => t('Imocom Gallery'),
+		'description' => 'Configure the gallery images',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('im_site_config_gallery_form'),
+		'access arguments' => array('administer site configuration'),
+		'file' => 'forms/im_site_config_gallery.form.inc',
+		);
+  $items['admin/config/imocom/second_logo'] = array(
+    'title' => t('Second Logo'),
+    'description' => 'Configure the second logo',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('im_site_config_logo_form'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'forms/im_site_config_logo.form.inc',
+    );
+	return $items;
+}
+
+/**
+ * Implements hook_block_info().
+ */
+
+function im_site_config_block_info(){
+	$blocks['im_gallery'] = array(
+		'info' => t('Block: Gallery'),
+    'cache' => DRUPAL_CACHE_GLOBAL,
+		);
+  $blocks['im_site_map'] = array(
+    'info' => t('Block: Site Map')
+    );
+  $blocks['im_sub_menu'] = array(
+    'info' => t('Block: sub-menu')
+    );
+  $blocks['im_float_menu'] = array(
+    'info' => t('Block: Float_menu')
+    );
+  $blocks['im_second_logo'] = array(
+    'info' => t('Block: Second Logo')
+    );
+  $blocks['im_title'] = array(
+    'info' => t('Block: Title section')
+    );
+  $blocks['im_news_title'] = array(
+    'info' => t('Block: News title')
+    );
+  $blocks['im_highlighted_title'] = array(
+    'info' => t('Block: Highlighted title')
+    );
+	return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function im_site_config_block_view($delta = ''){
+	$block = array();
+  switch ($delta){
+    case 'im_gallery':
+      $block['subject'] = t(''); 
+      $block['content'] = im_blocks_get_home_galleries();
+    break;
+
+    case 'im_news_title':
+      $block['content'] = array();
+      $block['content']['title'] = array(
+        '#type' => 'html_tag',
+        '#tag' => 'h2',
+        '#value' => t('News'),
+      );
+    break;
+
+    case 'im_highlighted_title':
+      $block['content'] = array();
+      $block['content']['title'] = array(
+        '#type' => 'html_tag',
+        '#tag' => 'h2',
+        '#value' => t('Highlight'),
+        );
+      break;
+
+    case 'im_site_map':
+      $block['subject'] = t('Site Map');
+      $block['content'] = site_map();
+    break;
+
+    case 'im_title':
+      $trail = menu_get_active_trail();
+      $block['content'] = $trail[1]['link_title'];
+      break;
+
+    case 'im_float_menu':
+      $block['subject'] = t('');
+      $block['content'] = im_float_menu();
+    break;  
+
+    case 'im_second_logo':
+      $block['subject'] = t('');
+      $block['content'] = im_second_logo();
+    break;
+
+    case 'im_sub_menu':
+      $allowed_sub_items = 5;
+      $block['content'] = array();
+      $menu_trail = menu_get_active_trail();
+      if (count($menu_trail) < 3) {
+        return $block;
+      }
+      end($menu_trail);
+      if (count($menu_trail) > 3) {
+        prev($menu_trail);
+      }
+      $current_page_parent = prev($menu_trail);
+      $main_menu = menu_tree_page_data('main-menu');
+      $desired_menu = array();
+      foreach ($main_menu as $menu_item) {
+        if ($menu_item['link']['mlid'] == $current_page_parent['mlid']) {
+          $desired_menu = $menu_item['below'];
+          break;
+        }
+      }
+      foreach ($desired_menu as &$menu_item) {
+        if ($menu_item['below']) {
+          $menu_item['below'] = array();
+        }
+      }
+      $block['content']['menu'] = menu_tree_output($desired_menu);
+    break; 
+  }
+  return $block;
+}
+/**
+ * Get the images styles for select list().
+ */
+function im_get_image_styles() {
+  foreach (image_styles() as $key => $value) {
+    $image_styles[$key] = $value['name'];
+  };
+  return $image_styles;
+}
+
+/*
+ *Site Map main-menu
+ */
+function site_map(){
+  $main_menu = menu_tree_all_data('main-menu', NULL, 1);
+  return menu_tree_output($main_menu);
+}
+
+/**
+ * Get image.
+ */
+function im_get_image($image, $image_style, $alt , $title){
+  $second_image = array();
+  $image_fid = variable_get($image,'');
+  $image = file_load($image_fid);
+  $image_style = image_style_load(variable_get($image_style, 'thumbnail'));
+  $image_width = 0;
+  $image_height = 0;
+  foreach ($image_style['effects'] as $effect) {
+  	if (($effect['name'] == 'image_scale_and_crop') || ($effect['name'] == 'image_scale')) {
+  		$image_width = $effect['data']['width'];
+  		$image_height = $effect['data']['height'];
+  		break;
+  	}
+  }
+  if ($image){
+  	$second_image = array(
+  		'#theme' => 'image-style',
+  		'#style_name' => $image_style['name'], 		
+  		'#path' => $image->uri,
+  		'#width' => $image_width,
+  		'#height' => $image_height,
+  		'#alt' => $alt,
+  		'#title' => $title,
+  		'#attributes' => array(
+  			'class' => array(drupal_html_class('im_image_style')),
+      ),
+  	);
+  }
+  return $second_image;
+}
+
+/*
+ * Second logo.
+ */
+
+function im_logo(){
+  $first_image = im_get_image('im_banner', 'im_banner_style', t('First Image'), t('First Image'));
+  $content['shit']= array(
+    'first' => array(
+      '#prefix' => '<div class="im_first_image">',
+      '#suffix' => '</div>',
+      '#markup' => theme('image', $first_image), array(
+        'attributes' => array(
+          'class' => array('im-first-image'),
+          'target' => 'blank',
+          ),
+        'html' => TRUE,
+        ),
+      ),
+    );
+  return $content;
+}
+
+function im_second_logo(){
+  $content = array();
+  $second_logo = im_get_image('im_image_logo', 'im_image_style', t('
+    second_logo'), t('second_logo'));
+  $content['logo'] = array(
+    'logo_image' => array(
+      '#markup' => l(theme('image', $second_logo), variable_get(
+        'im_image_link', '<front>'), array(
+        'attributes' => array(
+          'class' => array('im-second-logo'),
+          'target' => 'blank',
+          ),
+        'html' => TRUE,
+        )),
+      ),
+      );
+  return $content;
+}
+
+/**
+ * Home Galleries
+ */
+function im_blocks_get_home_galleries(){
+	$content = array();
+	$first_image = im_get_image('im_banner', 'im_banner_style', t('First Image'), t('First Image'));
+  $pdf_image = im_get_image('im_pdf_image', 'im_pdf_style', t('Pdf Image'), t('Pdf Image'));
+  $estimator_image = im_get_image('im_estimator_image', 'im_estimator_style', t('Estimator Image'), t('Estimator_image'));
+  $service_image = im_get_image('im_service_image', 'im_service_style', t('Service Image'), t('Service Image'));
+  $newsletter = drupal_get_form('imocom_newsletter');
+  $content['galleries'] = array(
+  	'#prefix' => '<div class="im_img_galleries">',
+  	'#suffix' => '</div>',
+  	'image' => array(
+  		'#prefix' => '<div class="im_img_news_">',
+  		'#suffix' => '</div>',
+  		'#markup' => views_embed_view('front_news', 'block'),
+  		),
+    'first' => array(
+    	'#prefix' => '<div class="im_first_image">',
+    	'#suffix' => '</div>',
+    	'#markup' =>  theme('image', $first_image), array(
+        'attributes' => array(
+          'class' => array('im-first-image'),
+          ),
+        'html' => TRUE,
+        ),
+    	),
+   'container1' => array(
+    	'#prefix' => '<div class="im_third_block">',
+    	'#suffix' => '</div>',
+        'pdf' => array(
+    	    '#prefix' => '<div class="im_image_pdf">',
+    	    '#suffix' => '</div>',
+    	    '#markup' => l(theme('image', $pdf_image), variable_get(
+    		    'im_pdf_link', '<front>'), array(
+    		    'attributes' => array(
+    			    'class' => array('im_pdf_link_one'),
+              'target' => 'blank',
+    			   ),
+    		    'html' => TRUE,
+    		)),
+    	),
+      'pdf_form' => array(
+          '#prefix' => '<div class="im_pdf_form">',
+          '#suffix' => '</div>',
+          '#markup' => drupal_render($newsletter),
+      ),
+     ),
+    'container2' => array(  
+      '#prefix' => '<div class="im_fourth_block">',
+      '#suffix' => '</div>', 
+		    'estimator' => array(
+		    	'#prefix' => '<div class="im_image_estimator">',
+		    	'#suffix' => '</div>',
+		    	'#markup' => l(theme('image', $estimator_image), variable_get(
+		    		'im_estimator_link', '<front>'), array(
+		    		'attributes' => array(
+		    			'class' => array('im_estimator_link_one'),
+		    			),
+		    		'html' => TRUE,
+    	      )),
+         ),	
+		    'service' => array(
+		    	'#prefix' => '<div class="im_image_service">',
+		    	'#suffix' => '</div>',
+		    	'#markup' => l(theme('image', $service_image), variable_get(
+            'im_service_link', '<front>'), array(
+            'attributes' => array(
+            	'class' => array('im_service_link_one'),
+            	),
+            'html' => TRUE,
+             )),
+		    		),
+		    	),
+  	);
+ return $content;
+
+} 
+
+/*
+ * Float Menu
+ */
+
+function im_float_menu(){
+  $content = array();
+
+  $content['float_menu'] = array(
+    'image_a' => array(
+      '#markup' => l(t('<span>CHAT</span>'), 'pagina-en-construccion', array(
+        'attributes' => array(
+          'class' => array('chat'),
+        ),
+        'html' => TRUE,
+      )),    
+    ),
+    'image_B' => array(
+      '#markup' => l(t('<span>FAQS</span>'), 'informacion-tecnica/faqs', array(
+        'attributes' => array(
+          'class' => array('preguntas-frecuentes'),
+          ),
+        'html' => TRUE,
+        )),    
+      ),
+    'image_c' => array(
+      '#markup' => l(t('<span>ESTIMATE</span>'), 'productos/cotice-su-equipo', array(
+        'attributes' => array(
+          'class' => array('cotizacion'),
+          ),
+        'html' => TRUE,
+        )),
+      ),
+    'image_d' => array(
+      '#markup' => l(t('<span>TECHNICAL SERVICE</span>'), 'servicio-postventa/solicitud-de-servicio-tecnico', array(
+        'attributes' => array(
+          'class' => array('servicio-tecnico'),
+          ),
+        'html' => TRUE,
+        )),
+      ),
+    'image_e' => array(
+      "#markup" => l('<span>IMOCOM</span>', 'http://www.imocom.com.co', array(
+        'attributes' => array(
+          'class' => array('imocom'),
+          'target' => '_blank',
+          ),
+        'html' => TRUE,
+        )),
+      ),
+  );
+  return $content;
+}
+
+/**
+ * Implements hook_views_pre_render().
+ */
+
+ function im_site_config_views_pre_render(&$view) {
+  switch ($view->name) {
+    case 'logos':
+      if ($view->current_display == 'block') {
+        //dpm(drupal_get_path('module','im_site_config'));
+        drupal_add_js(drupal_get_path('module','im_site_config').'/js/im_logos.js');
+        //$view->attachment_after = render($block['content']);
+      }
+      
+      break;
+  }
+}
+
+
+
+

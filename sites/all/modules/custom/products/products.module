@@ -1,0 +1,305 @@
+<?php
+ /*
+  * @file
+  */
+
+ /*
+  * Implements hook_page_alter().
+  */
+
+
+function products_page_alter(&$page) {
+
+$normal_path = trim($_GET['q'], '/');
+$path_alias = drupal_get_path_alias($normal_path);
+$alias_parts = explode('/', $path_alias);
+$vocabulary="";
+
+if ($alias_parts[0] == 'productos') {
+	//search id vocabulary
+	$query = db_select('taxonomy_vocabulary');
+	$query->condition('taxonomy_vocabulary.machine_name','products', '=');
+	$query->fields('taxonomy_vocabulary', array('vid', 'name', 'machine_name'));
+	$result = $query->execute();
+	foreach ($result as $record) {
+  		$vocabulary=$record->vid;
+	}
+
+  _products_get_childrens($alias_parts, $page, $vocabulary , 1, 0 );
+
+	}
+}
+
+//show nodes or associated terms. according to the url
+function _products_get_childrens($alias_parts, &$page, $vocabulary, $i, $tid ){
+	
+		
+	$verify_vocabulary=0;
+	$verify_children=0;
+	$idtaxonomy=0;
+	
+	
+	if(isset($alias_parts[$i])){
+	$name_term=trim(str_replace("-"," ", $alias_parts[$i]));
+		
+	$q=trim($_GET['q'], '/');
+	$q_parts = explode('/', $q);
+	$count = count($q_parts);
+	$idtaxonomy=trim($q_parts[$count-1]);
+	}
+		//$page ['content']['system_main'][0]['nodes'] = array( '#weight' => 0, '#markup' => "dddd".$q_parts[$count-1]);	
+				
+	if(isset($name_term)){
+	$query = db_select('taxonomy_term_data');
+	$query->condition('taxonomy_term_data.tid',$idtaxonomy, '=');
+	$query->condition('taxonomy_term_data.vid',$vocabulary, '=');
+	$query->fields('taxonomy_term_data', array('tid','vid', 'name', 'description'));
+	$query->orderBy('weight', 'ASC');
+	$result = $query->execute();
+					
+		foreach ($result as $record) {
+				$descriptions=$record->description;
+				$verify_vocabulary=1;
+				
+						$queryi =db_select('field_data_field_image','i');
+						$queryi->join('file_managed','f','f.fid = i.field_image_fid');
+						$queryi->condition('i.entity_id',$record->tid, '=');
+						$queryi->condition('i.entity_type','taxonomy_term', '=');
+						$queryi->groupBy('i.field_image_fid');
+						$queryi->fields('f', array('uri','fid'));
+						$queryi->fields('i', array('field_image_alt','field_image_fid'));
+						$resulti = $queryi->execute();
+						
+						$q=trim($_GET['q'], '/');
+								$path_alias = drupal_get_path_alias($q);
+								
+												
+						foreach ($resulti as $recordi) {
+							$imageurl= $recordi->uri ;
+							$imagealt= $recordi->field_image_alt;
+							
+							
+						}
+				
+		}
+
+			
+	}
+	
+  	if($verify_vocabulary==1 || isset($alias_parts[$i])==null){
+		
+			$query4 = db_select('taxonomy_term_hierarchy', 'i');
+			$query4->join('taxonomy_term_data','f','i.tid = f.tid');
+			$query4->condition('i.parent',$idtaxonomy, '=');
+			$query4->fields('i', array('tid','parent'));
+			$query4->fields('f', array('tid','weight'));
+			$query4->orderBy('f.weight', 'ASC');
+			$result4 = $query4->execute();
+			$c=1;
+			$desc=0;
+		
+			$page ['content']['system_main'][0]['nodes'] = array( '#weight' => 0, '#markup' => "<div class='content'>");	
+		
+			foreach ($result4 as $record4) {
+			
+				if(isset($descriptions)){
+					$desc=1;
+					$page ['content']['system_main'][1]['nodes'] = array( '#weight' => 0, '#markup' => "<p>".t($descriptions)."</p> ");		
+						
+					
+					
+		
+				}
+					
+					
+				$query5 = db_select('taxonomy_term_data');
+				$query5->condition('taxonomy_term_data.tid',$record4->tid, '=');
+				$query5->condition('taxonomy_term_data.vid',$vocabulary, '=');
+				$query5->fields('taxonomy_term_data', array('tid','vid','name','description'));
+				$query5->orderBy('weight', 'ASC');
+				$result5 = $query5->execute();
+				
+				foreach ($result5 as $record5) {
+					
+					if($record5->tid==$record4->tid){
+												
+					
+						$query6 =db_select('field_data_field_image','i');
+						$query6->join('file_managed','f','f.fid = i.field_image_fid');
+						$query6->condition('i.entity_id',$record5->tid, '=');
+						$query6->condition('i.entity_type','taxonomy_term', '=');
+						$query6->groupBy('i.field_image_fid');
+						$query6->fields('f', array('uri','fid'));
+						$query6->fields('i', array('field_image_alt','field_image_fid'));
+						$result6 = $query6->execute();
+						
+						$q=trim($_GET['q'], '/');
+								$path_alias = drupal_get_path_alias($q);
+								$c=$c+1;
+												
+						foreach ($result6 as $record6) {
+							$c=$c+1;
+							$direct_path=0;
+							
+							$characters=array('(',')','"','.',',',';', ':','_','|','[',']','{','}','+','=','*','&','%','^','$','#','@', '!','~','?','<','>');										
+							$term = taxonomy_term_load ( $record5->tid ); // load term object
+							$term_uri = taxonomy_term_uri ( $term ); // get array with path
+							$term_path_taxonomy = $term_uri [ 'path' ];
+							$taxonomy_path_alias = drupal_lookup_path ( 'alias' , $term_path_taxonomy );
+	 						
+								
+							$querya = db_select('field_data_field_product_reference', 'i');
+							$querya->join('node','f','f.nid = i.field_product_reference_target_id');
+							$querya->condition('i.entity_type','taxonomy_term', '=');
+							$querya->condition('i.entity_id',$record5->tid, '=');
+							$querya->fields('i', array('entity_type','entity_id', 'field_product_reference_target_id'));
+							$querya->fields('f', array('title','nid'));
+							$resulta = $querya->execute();
+							foreach ($resulta as $recorda) {
+								$direct_path=1;
+								
+							
+								$term_path_node=drupal_lookup_path('alias', "node/".$recorda->nid);
+								$q=trim($_GET['q'], '/');
+								$path_alias = drupal_get_path_alias($q);
+								$c=$c+1;
+								if($idtaxonomy!=0){								
+									$page ['content']['system_main'][$c]['nodes'] = array( '#weight' => 1, '#markup' => "<div class= 'subcontent'><a href='/".$term_path_node."'><img src=".file_create_url($record6->uri)." alt='".t($record6->field_image_alt)."' class='img'></a> <a href='/".$term_path_node."'class='l'>".t($record5->name)."</a> </div>" );
+								}else{
+									$page ['content']['system_main'][$c]['nodes'] = array( '#weight' => 1, '#markup' => "<div class= 'subcontent'><a href='/".$term_path_node."'><img src=".file_create_url($record6->uri)." alt='".t($record6->field_image_alt)."' class='imgfront'></a> <a href='/".$term_path_node."'class='l'>".t($record5->name)."</a> </div>" );
+									
+									
+								}
+		
+							}
+							//models associated with term taxonomy
+							
+							
+							$models=0;
+							if (isset($record->tid)) {
+								$queryb = db_select('field_data_field_products', 'i');
+								$queryb->condition('i.field_products_tid',$record->tid, '=');
+								$queryb->fields('i', array('entity_id','field_products_tid'));
+							//$queryb->fields('f', array('nid'));
+							
+								$resultb = $queryb->execute();
+								foreach ($resultb as $recordb) {
+									$models=$recordb->entity_id;
+															
+								}
+							}
+							
+							if($models!=0 && $direct_path==0 && $idtaxonomy!=0){
+								$c=$c+1;
+							
+															
+							 	$page ['content']['system_main'][$c]['nodes'] = array( '#weight' => 1, '#markup' => "<div class='subcontent'><a href='/".$taxonomy_path_alias."'><img src=".file_create_url($record6->uri)." alt='".t($record6->field_image_alt)."' class='img'></a>  <a href='/".$taxonomy_path_alias."' class='l'>".t($record5->name)."</a> </div>" );
+							 
+							 
+							}
+							
+							if($direct_path==0 && $models==0 && $idtaxonomy!=0){
+								$c=$c+1;								
+								$page ['content']['system_main'][$c]['nodes'] = array( '#weight' => 1, '#markup' => "<div class='subcontent'><a href='/".$taxonomy_path_alias."'><img src=".file_create_url($record6->uri)." alt='".t($record6->field_image_alt)."' class='img'></a>  <a href='/".$taxonomy_path_alias."' class='l'>".t($record5->name)."</a> </div>" );
+							}
+							
+							
+							
+							if($direct_path==0 && $models==0 && $idtaxonomy==0 ){
+								$c=$c+1;								
+								$page ['content']['system_main'][$c]['nodes'] = array( '#weight' => 1, '#markup' => "<div class='subcontent'><a href='/".$taxonomy_path_alias."'><img src=".file_create_url($record6->uri)." alt='".t($record6->field_image_alt)."' class='imgfront'></a>  <a href='/".$taxonomy_path_alias."' class='l'>".t($record5->name)."</a> </div>" );
+							}
+							
+							if($models!=0 && $direct_path==0 && $idtaxonomy==0){
+								$c=$c+1;
+									
+								
+									
+								
+											
+							 	$page ['content']['system_main'][$c]['nodes'] = array( '#weight' => 1, '#markup' => "<div class='subcontent'><a href='/".$taxonomy_path_alias."'><img src=".file_create_url($record6->uri)." alt='".t($record6->field_image_alt)."' class='imgfront'></a>  <a href='/".$taxonomy_path_alias."' class='l'>".t($record5->name)."</a> </div>" );
+							 
+							 
+							}
+								
+								
+						}
+						
+					}}
+				
+				
+
+			}
+		
+		
+		if(isset($descriptions) && $desc==0){
+			$desc=1;
+						
+			$page ['content']['system_main']['nodes'] = array( '#weight' => 0, '#markup' => "<img src=".file_create_url($imageurl)." alt='".t($imagealt)."' class='imginto'>".t($descriptions)."</p> ");			
+		
+		}	
+				
+			$page ['content']['system_main'][$c+1]['nodes'] = array( '#weight' => 0, '#markup' => "</div>");	
+		
+			
+	}
+}
+
+
+
+
+/**
+ * Implements hook_block_info().
+ */
+
+function products_block_info(){
+  //$blocks = array();
+  $blocks['submenu_products'] = array(
+    'info' => t('Block: submenu_products')
+    );
+  $blocks['im_title_products'] = array(
+    'info' => t('Block: Title section products')
+    );
+  return $blocks;
+  
+}
+
+function products_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+  	
+    case 'submenu_products':
+    	$q=trim($_GET['q'], '/');
+		$q_parts = explode('/', $q);
+		$count = count($q_parts);
+		$idtaxonomy=trim($q_parts[$count-1]);
+		$father=0;
+		
+			$recordt=array();
+			$resultt=array();
+			$queryt = db_select('taxonomy_term_hierarchy');
+			$queryt->condition('taxonomy_term_hierarchy.tid',$idtaxonomy, '=');
+			$queryt->fields('taxonomy_term_hierarchy', array('tid','parent'));
+			$resultt = $queryt->execute();
+			foreach ($resultt as $recordt) {
+				$father = $recordt->parent;
+			}
+		$block['content']['menu'] = array('#weight' => 0, '#markup' => views_embed_view('menu','block', $father)); 
+			
+	  
+  break;
+  
+  case 'im_title_products':
+     	
+      $block['content']= array( '#weight' => 0, '#markup' => t("PRODUCTS"));
+      
+   break;
+   }
+   return $block;
+
+
+}
+
+
+
+

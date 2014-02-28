@@ -1,0 +1,4 @@
+name = Site config
+description = Site configurations
+core = 7.x
+package = Imocom

@@ -1,0 +1,4 @@
+name = Newsletter
+description = "Newsletter form"
+package = Imocom Newsletter
+core = 7.x
